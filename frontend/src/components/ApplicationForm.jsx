@@ -14,7 +14,7 @@ import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import HomePage from '../pages/HomePage';
 import ProgramsPage from '../pages/ProgramsPage';
-
+const API_BASE_URL = 'https://the-gladiator-college.vercel.app/' || 'http://localhost:5000';
 const admissionSteps = [
   { step: 1, label: '1. Personal Profile', icon: User },
   { step: 2, label: '2. Program Choice', icon: BookOpen },
