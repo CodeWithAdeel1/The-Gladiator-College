@@ -18,7 +18,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://the-gladiator-college-frontend.vercel.app' // Replace with your actual frontend Vercel URL
+    'https://the-gladiators-college.vercel.app/'
   ],
   credentials: true
 }));
