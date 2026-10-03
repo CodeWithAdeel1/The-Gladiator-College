@@ -12,7 +12,16 @@ const { createFinalApplicationPackage } = require('./utils/pdfGenerator');
 const app = express();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-app.use(cors());
+// app.use(cors());
+// const cors = require('cors');
+
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://the-gladiator-college-frontend.vercel.app' // Replace with your actual frontend Vercel URL
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Use system temp directory for Vercel Serverless compatibility
