@@ -14,8 +14,8 @@ import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import HomePage from '../pages/HomePage';
 import ProgramsPage from '../pages/ProgramsPage';
-const API_BASE_URL ='http://localhost:5000' || 'https://the-gladiator-college.vercel.app';
-const admissionSteps = [
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';const admissionSteps = [
   { step: 1, label: '1. Personal Profile', icon: User },
   { step: 2, label: '2. Program Choice', icon: BookOpen },
   { step: 3, label: '3. Educational Details', icon: GraduationCap },
