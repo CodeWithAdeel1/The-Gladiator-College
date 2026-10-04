@@ -15,13 +15,45 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // app.use(cors());
 // const cors = require('cors');
 
+// app.use(cors({
+//   origin: [
+//     'http://localhost:5173',
+//     'https://the-gladiators-college.vercel.app'
+//   ],
+//   credentials: true
+// }));
+// BEFORE (In your code):
+// app.use(cors({
+//   origin: [
+//     'http://localhost:5173',
+//     'https://the-gladiators-college.vercel.app' // <-- Typo here!
+//   ],
+//   credentials: true
+// }));
+
+// AFTER (Fixed):
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://the-gladiator-college.vercel.app' // Correct domain name
+];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://the-gladiators-college.vercel.app'
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Express handling for preflight OPTIONS requests
+app.options('*', cors());
+
 app.use(express.json());
 
 // Use system temp directory for Vercel Serverless compatibility
@@ -31,7 +63,11 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
-const upload = multer({ storage });
+// const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 3 * 1024 * 1024 } // Limit each file to 3MB
+});
 
 const cleanupFiles = async (files) => {
   if (!files) return;
