@@ -12,34 +12,14 @@ const { createFinalApplicationPackage } = require('./utils/pdfGenerator');
 const app = express();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// app.use(cors());
-// const cors = require('cors');
-
-// app.use(cors({
-//   origin: [
-//     'http://localhost:5173',
-//     'https://the-gladiators-college.vercel.app'
-//   ],
-//   credentials: true
-// }));
-// BEFORE (In your code):
-// app.use(cors({
-//   origin: [
-//     'http://localhost:5173',
-//     'https://the-gladiators-college.vercel.app' // <-- Typo here!
-//   ],
-//   credentials: true
-// }));
-
-// AFTER (Fixed):
+// 1. CORS Configuration
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://the-gladiator-college.vercel.app' // Correct domain name
+  'https://the-gladiator-college.vercel.app'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
@@ -56,17 +36,16 @@ app.options('*', cors());
 
 app.use(express.json());
 
-// Use system temp directory for Vercel Serverless compatibility
+// 2. Temp upload configuration (Vercel serverless compatible)
 const UPLOAD_DIR = os.tmpdir();
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
-// const upload = multer({ storage });
-const upload = multer({
+const upload = multer({ 
   storage,
-  limits: { fileSize: 3 * 1024 * 1024 } // Limit each file to 3MB
+  limits: { fileSize: 4 * 1024 * 1024 } // 4MB per file limit
 });
 
 const cleanupFiles = async (files) => {
@@ -83,17 +62,13 @@ const cleanupFiles = async (files) => {
   }
 };
 
-app.post('/api/applications', upload.fields([
-  { name: 'dmc', maxCount: 1 },
-  { name: 'domicile', maxCount: 1 },
-  { name: 'cnicOrFormB', maxCount: 1 },
-  { name: 'fatherCnic', maxCount: 1 }
-]), async (req, res) => {
+// 3. Application Submission Logic
+const handleApplicationSubmission = async (req, res) => {
   try {
     const rawData = JSON.parse(req.body.data);
     const { personalInfo, programType, education } = rawData;
 
-    // 1. BACKEND VALIDATION: Check required personal info
+    // Validation: Check required personal info
     if (
       !personalInfo?.fullName ||
       !personalInfo?.email ||
@@ -106,7 +81,7 @@ app.post('/api/applications', upload.fields([
       return res.status(400).json({ success: false, message: 'All personal profile fields are strictly required.' });
     }
 
-    // 2. BACKEND VALIDATION: Strict Matric requirement for FA/FSc
+    // Validation: FA/FSc requirements
     if (programType === 'FA' || programType === 'FSc') {
       if (!Array.isArray(education) || education.length === 0) {
         await cleanupFiles(req.files);
@@ -119,19 +94,17 @@ app.post('/api/applications', upload.fields([
         return res.status(400).json({ success: false, message: 'Matric (SSC) record is required for FA / FSc applicants.' });
       }
 
-      // Strict DMC file requirement for FA/FSc
       if (!req.files || !req.files.dmc) {
         await cleanupFiles(req.files);
         return res.status(400).json({ success: false, message: 'DMC / Transcript PDF upload is required for FA / FSc applicants.' });
       }
     }
 
-    // 4. Generate Combined PDF Package
+    // Generate Combined PDF Package
     const pdfBuffer = await createFinalApplicationPackage(rawData, req.files);
-
     const studentName = rawData.personalInfo?.fullName || 'Applicant';
 
-    // 5. Send via Resend API
+    // Send email via Resend API
     const { data, error } = await resend.emails.send({
       from: 'Admission System <onboarding@resend.dev>',
       to: [process.env.RECIPIENT_EMAIL],
@@ -158,7 +131,7 @@ app.post('/api/applications', upload.fields([
       throw new Error(error.message);
     }
 
-    // 6. Clean up temporary uploaded files from disk
+    // Clean up temporary uploaded files
     await cleanupFiles(req.files);
 
     res.status(200).json({ success: true, message: 'Application submitted and emailed successfully!' });
@@ -167,13 +140,28 @@ app.post('/api/applications', upload.fields([
     console.error('Submission Error:', error);
     res.status(500).json({ success: false, message: 'Server error processing application', error: error.message });
   }
-});
+};
 
-// Run local listener during development
+const uploadFields = upload.fields([
+  { name: 'dmc', maxCount: 1 },
+  { name: 'domicile', maxCount: 1 },
+  { name: 'cnicOrFormB', maxCount: 1 },
+  { name: 'fatherCnic', maxCount: 1 }
+]);
+
+// Route handlers - registered under both paths for Vercel rewrite resilience
+app.post('/api/applications', uploadFields, handleApplicationSubmission);
+app.post('/applications', uploadFields, handleApplicationSubmission);
+
+// Health Check Endpoints
+app.get('/api/health', (req, res) => res.json({ status: 'ok', serverTime: new Date() }));
+app.get('/health', (req, res) => res.json({ status: 'ok', serverTime: new Date() }));
+
+// Local development listener
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT} with Resend Email API`));
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
-// Export express app handler for Vercel serverless deployment
+// Export app for Vercel Serverless
 module.exports = app;
