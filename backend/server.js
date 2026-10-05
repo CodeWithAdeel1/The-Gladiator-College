@@ -12,12 +12,15 @@ const { createFinalApplicationPackage } = require('./utils/pdfGenerator');
 const app = express();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 1. CORS Configuration
+// ==========================================
+// 1. CORS & Preflight Configuration
+// ==========================================
 const allowedOrigins = [
   'http://localhost:5173',
   'https://the-gladiator-college.vercel.app'
 ];
 
+// Main CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
@@ -31,12 +34,16 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Express handling for preflight OPTIONS requests
-app.options('*', cors());
+// ✅ THE FIX: Explicitly handle OPTIONS for your specific endpoints.
+// This prevents Express 5 wildcard crashes and fixes the CORS/404 preflight error.
+app.options('/api/applications', cors());
+app.options('/applications', cors());
 
 app.use(express.json());
 
-// 2. Temp upload configuration (Vercel serverless compatible)
+// ==========================================
+// 2. Temp Upload Configuration (Vercel Serverless)
+// ==========================================
 const UPLOAD_DIR = os.tmpdir();
 
 const storage = multer.diskStorage({
@@ -62,7 +69,9 @@ const cleanupFiles = async (files) => {
   }
 };
 
+// ==========================================
 // 3. Application Submission Logic
+// ==========================================
 const handleApplicationSubmission = async (req, res) => {
   try {
     const rawData = JSON.parse(req.body.data);
@@ -149,7 +158,10 @@ const uploadFields = upload.fields([
   { name: 'fatherCnic', maxCount: 1 }
 ]);
 
-// Route handlers - registered under both paths for Vercel rewrite resilience
+// ==========================================
+// 4. Routes
+// ==========================================
+// Registered under both paths for Vercel rewrite resilience
 app.post('/api/applications', uploadFields, handleApplicationSubmission);
 app.post('/applications', uploadFields, handleApplicationSubmission);
 
@@ -157,6 +169,9 @@ app.post('/applications', uploadFields, handleApplicationSubmission);
 app.get('/api/health', (req, res) => res.json({ status: 'ok', serverTime: new Date() }));
 app.get('/health', (req, res) => res.json({ status: 'ok', serverTime: new Date() }));
 
+// ==========================================
+// 5. Server Initialization
+// ==========================================
 // Local development listener
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production') {
