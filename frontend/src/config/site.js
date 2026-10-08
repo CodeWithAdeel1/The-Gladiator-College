@@ -7,10 +7,10 @@ export const SITE = {
   logo: 'https://the-gladiators-college.vercel.app/logo.jpeg',
   tagline: "Let's learn and spread.",
   session: '2026-2027',
-  // apiBaseUrl:
-  //   import.meta.env.VITE_API_BASE_URL ||
-  //   'https://the-gladiator-college.vercel.app',
   apiBaseUrl:
-  import.meta.env.VITE_API_BASE_URL ||
-  'http://localhost:5000',
+    import.meta.env.VITE_API_BASE_URL ||
+    'https://the-gladiator-college.vercel.app',
+  // apiBaseUrl:
+  // import.meta.env.VITE_API_BASE_URL ||
+  // 'http://localhost:5000',
 };
